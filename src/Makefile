@@ -7,12 +7,6 @@ KERNEL_VERSION := $(shell uname -r)
 KERNEL_MAJ := $(shell echo $(KERNEL_VERSION) | cut -f1 -d.)
 KERNEL_MIN := $(shell echo $(KERNEL_VERSION) | cut -f2 -d.)
 
-XATTR_DEF_FLAG :=
-ifeq ($(shell [ $(KERNEL_MAJ) -gt 4 -o \
-	\( $(KERNEL_MAJ) -eq 4 -a $(KERNEL_MIN) -ge 15 \) ] && echo true), true)
-XATTR_DEF_FLAG := -DNEW_XATTR_INC
-endif
-
 BUILDDIR = ../build
 ROOTDIR = ../
 
@@ -22,11 +16,20 @@ CM_TESTS = \
 		$(filter-out $(CM_TESTS_EXCLUDE), \
 			$(notdir $(wildcard tests/*.cpp))))
 
+CM_SEQ1_EXCLUDE = base.cpp
+CM_SEQ1 = \
+	$(patsubst %.cpp, %.so, \
+		$(filter-out $(CM_SEQ1_EXCLUDE), \
+			$(notdir $(wildcard $(CURDIR)/tests/seq1/*.cpp))))
+CM_SEQ1_OUT = \
+	$(foreach TEST, $(CM_SEQ1), \
+		$(BUILDDIR)/tests/seq1/$(TEST))
+
 TARGET = $(ROOTDIR)harness
 
-.PHONY: all tests
+.PHONY: all tests seq1
 
-all: $(BUILDDIR) $(TARGET) tests
+all: $(BUILDDIR) $(TARGET) tests seq1
 
 $(BUILDDIR): 
 	@mkdir -p $(BUILDDIR)
@@ -49,6 +52,8 @@ $(TARGET): \
 
 tests: \
 	$(foreach TEST, $(CM_TESTS), $(BUILDDIR)/tests/$(TEST))
+
+seq1: $(CM_SEQ1_OUT)
 
 $(BUILDDIR)/communication/%.o: communication/%.cpp
 	@mkdir -p $(@D)
@@ -84,3 +89,18 @@ $(BUILDDIR)/tests/%.so: tests/%.cpp \
 	@mkdir -p $(@D)
 	$(G++) $(OPT) $(GOTPSSO) $(XATTR_DEF_FLAG) -Wl,-soname,$(notdir $@) \
 -o $@ $^
+
+# TODO FIX LINK ERRORS
+$(CM_SEQ1_OUT): $(BUILDDIR)/tests/seq1/%.so : \
+                tests/seq1/%.cpp \
+                $(BUILDDIR)/tests/BaseTestCase.o \
+                $(BUILDDIR)/wrapper/actions.o \
+		$(BUILDDIR)/wrapper/workload.o \
+                $(BUILDDIR)/wrapper/wrapper.o \
+                $(BUILDDIR)/wrapper/DiskMod.o \
+                $(BUILDDIR)/communication/ClientSocket.o \
+                $(BUILDDIR)/results/DataTestResult.o
+	@mkdir -p $(@D)
+	$(G++) $(OPT) $(GOTPSSO) $(XATTR_DEF_FLAG) -Wl,-soname,$(notdir $@) \
+                -o $@ $^
+

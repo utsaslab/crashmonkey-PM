@@ -7,6 +7,7 @@
 static const int WRITE = 0;
 static const int FLUSH = 1;
 static const int FENCE = 2;
+static const int CHECKPOINT = 3;
 
 int main(int argc, char* argv[]) {
   if (argc < 2) {
@@ -47,6 +48,10 @@ int main(int argc, char* argv[]) {
     }
     case FENCE: {
       std::cout << "[pc 0x" << std::hex << pc << "] mfence or sfence" << std::endl;
+      break;
+    }
+    case CHECKPOINT: {
+      std::cout << "[pc 0x" << std::hex << pc << "] checkpoint" << std::endl;
       break;
     }
     }
